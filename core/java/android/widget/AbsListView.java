@@ -23,6 +23,8 @@ import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Parcel;
@@ -226,6 +228,14 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
      * The thread that created this view.
      */
     private final Thread mOwnerThread;
+
+    private final EpdController epdController;
+    private boolean mSuppressEinkClear;
+    private boolean mClearEinkOnNextDraw;
+    private int mEinkClearTopY;
+    int mEinkLayoutClearCount;
+    private int mEinkLayoutCounter;
+
 
     /**
      * Controls if/how the user may choose/check items in the list
@@ -767,6 +777,8 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         TypedArray a = context.obtainStyledAttributes(R.styleable.View);
         initializeScrollbars(a);
         a.recycle();
+	mEinkLayoutClearCount = 0;
+        epdController = new EpdController(context);
     }
 
     public AbsListView(Context context, AttributeSet attrs) {
@@ -817,6 +829,8 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                 a.getBoolean(R.styleable.AbsListView_fastScrollAlwaysVisible, false));
 
         a.recycle();
+	mEinkLayoutClearCount = 0;
+        epdController = new EpdController(context);
     }
 
     private void initAbsListView() {
@@ -2443,6 +2457,37 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                 + mSelectionRightPadding, b + mSelectionBottomPadding);
     }
 
+    void incrementEinkLayoutCounter() {
+        if (mEinkLayoutClearCount > 0) {
+            ++mEinkLayoutCounter;
+            if (mEinkLayoutCounter >= mEinkLayoutClearCount) {
+                clearEinkOnNextDraw();
+            }
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(final KeyEvent keyEvent) {
+        boolean b = super.dispatchKeyEvent(keyEvent);
+        if (!b && keyEvent.getAction() == 0) {
+            b = this.onKeyDown(keyEvent.getKeyCode(), keyEvent);
+        }
+        if (mEinkLayoutClearCount > 0) {
+            if (keyEvent.getAction() == 1) {
+                if (mSuppressEinkClear) {
+                    mSuppressEinkClear = false;
+                    mClearEinkOnNextDraw = true;
+                    invalidate();
+                }
+            }
+            else if (keyEvent.getAction() == 0 && keyEvent.getRepeatCount() > 0) {
+                mSuppressEinkClear = true;
+                return b;
+            }
+        }
+        return b;
+    }
+
     @Override
     protected void dispatchDraw(Canvas canvas) {
         int saveCount = 0;
@@ -2455,6 +2500,11 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     scrollX + mRight - mLeft - mPaddingRight,
                     scrollY + mBottom - mTop - mPaddingBottom);
             mGroupFlags &= ~CLIP_TO_PADDING_MASK;
+        }
+
+        if (!mSuppressEinkClear && mClearEinkOnNextDraw) {
+            epdController.setRegion("AbsListView", EpdController.HwRegion.APP_2, new EpdRegionParams(0, mEinkClearTopY, 600, 800, EpdRegionParams.Wave.GC), EpdController.Mode.ONESHOT_ALL);
+            mClearEinkOnNextDraw = false;
         }
 
         final boolean drawSelectorOnTop = mDrawSelectorOnTop;
@@ -6078,6 +6128,11 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
     @Override
     protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
         return p instanceof AbsListView.LayoutParams;
+    }
+
+    public void clearEinkOnNextDraw() {
+        mClearEinkOnNextDraw = true;
+        mEinkLayoutCounter = 0;
     }
 
     /**

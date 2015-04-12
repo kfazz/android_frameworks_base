@@ -22,6 +22,8 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.PixelFormat;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.os.Handler;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -75,6 +77,7 @@ public class Toast {
      */
     public static final int LENGTH_LONG = 1;
 
+    private static EpdController epdController;
     final Context mContext;
     final TN mTN;
     int mDuration;
@@ -94,6 +97,7 @@ public class Toast {
                 com.android.internal.R.dimen.toast_y_offset);
         mTN.mGravity = context.getResources().getInteger(
                 com.android.internal.R.integer.config_toastDefaultGravity);
+        epdController = new EpdController(context);
     }
     
     /**
@@ -403,6 +407,7 @@ public class Toast {
                 }
                 if (localLOGV) Log.v(TAG, "ADD! " + mView + " in " + this);
                 mWM.addView(mView, mParams);
+                epdController.setRegion("Toast", EpdController.HwRegion.TOAST, new EpdRegionParams(0, 0, 600, 800, EpdRegionParams.Wave.GU));
                 trySendAccessibilityEvent();
             }
         }
@@ -431,6 +436,8 @@ public class Toast {
                 // the view isn't yet added, so let's try not to crash.
                 if (mView.getParent() != null) {
                     if (localLOGV) Log.v(TAG, "REMOVE! " + mView + " in " + this);
+                    epdController.resetRegion("Toast", EpdController.HwRegion.TOAST);
+                    epdController.disableEpd("Toast", 100);
                     mWM.removeView(mView);
                 }
 

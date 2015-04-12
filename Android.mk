@@ -135,6 +135,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/hardware/ICameraServiceListener.aidl \
 	core/java/android/hardware/ICamera.aidl \
 	core/java/android/hardware/ICameraClient.aidl \
+	core/java/android/hardware/IEpdService.aidl \
 	core/java/android/hardware/IConsumerIrService.aidl \
 	core/java/android/hardware/IProCameraUser.aidl \
 	core/java/android/hardware/IProCameraCallbacks.aidl \
@@ -392,6 +393,8 @@ aidl_files := \
 	frameworks/base/core/java/android/content/SyncStats.aidl \
 	frameworks/base/core/java/android/content/res/Configuration.aidl \
 	frameworks/base/core/java/android/database/CursorWindow.aidl \
+	frameworks/base/core/java/android/hardware/EpdRegionParams.aidl \
+	frameworks/base/core/java/android/hardware/IEpdService.aidl \
 	frameworks/base/core/java/android/hardware/location/GeofenceHardwareRequestParcelable.aidl \
 	frameworks/base/core/java/android/net/Uri.aidl \
 	frameworks/base/core/java/android/nfc/NdefMessage.aidl \

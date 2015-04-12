@@ -1998,6 +1998,12 @@ public abstract class Context {
      * @see android.app.DownloadManager
      */
     public abstract Object getSystemService(String name);
+    /**
+     * Use with {@link #getSystemService} to retrieve a
+     * {@link android.server.EpdService} for controlling E-ink display,
+     * including Regions and Waveforms for drawing, and other functions.
+     */
+    public static final String EPD_SERVICE = "epd";
 
     /**
      * Use with {@link #getSystemService} to retrieve a

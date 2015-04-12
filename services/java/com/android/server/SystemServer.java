@@ -410,6 +410,12 @@ class ServerThread {
         if (factoryTest != SystemServer.FACTORY_TEST_LOW_LEVEL) {
             //if (!disableNonCoreServices) { // TODO: View depends on these; mock them?
             if (true) {
+		try {
+		    Slog.i(TAG, "Epd Service");
+		    ServiceManager.addService(Context.EPD_SERVICE, new EpdService(context));
+		} catch (Throwable e) {
+		    Slog.e(TAG, "Failure starting Epd Service", e);
+		}
                 try {
                     Slog.i(TAG, "Input Method Service");
                     imm = new InputMethodManagerService(context, wm);

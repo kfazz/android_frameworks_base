@@ -24,6 +24,7 @@ LOCAL_SRC_FILES:= \
 	AndroidRuntime.cpp \
 	Time.cpp \
 	com_android_internal_content_NativeLibraryHelper.cpp \
+	com_android_server_EpdService.cpp \
 	com_google_android_gles_jni_EGLImpl.cpp \
 	com_google_android_gles_jni_GLImpl.cpp.arm \
 	android_app_NativeActivity.cpp \

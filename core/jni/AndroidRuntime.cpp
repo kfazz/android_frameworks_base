@@ -91,6 +91,7 @@ extern int register_android_media_JetPlayer(JNIEnv *env);
 extern int register_android_media_ToneGenerator(JNIEnv *env);
 
 extern int register_android_util_FloatMath(JNIEnv* env);
+extern int register_com_android_server_EpdService(JNIEnv* env);
 
 namespace android {
 
@@ -98,6 +99,7 @@ namespace android {
  * JNI-based registration functions.  Note these are properly contained in
  * namespace android.
  */
+
 extern int register_android_content_AssetManager(JNIEnv* env);
 extern int register_android_util_EventLog(JNIEnv* env);
 extern int register_android_util_Log(JNIEnv* env);
@@ -1220,6 +1222,7 @@ static const RegJNIRec gRegJNI[] = {
     REG_JNI(register_android_animation_PropertyValuesHolder),
     REG_JNI(register_com_android_internal_content_NativeLibraryHelper),
     REG_JNI(register_com_android_internal_net_NetworkStatsFactory),
+    REG_JNI(register_com_android_server_EpdService),
 };
 
 /*

@@ -27,6 +27,8 @@ import android.graphics.Typeface;
 import android.graphics.Paint.Align;
 import android.graphics.Region.Op;
 import android.graphics.drawable.Drawable;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.inputmethodservice.Keyboard.Key;
 import android.media.AudioManager;
 import android.os.Handler;
@@ -148,6 +150,10 @@ public class KeyboardView extends View implements View.OnClickListener {
     private int mPreviewHeight;
     // Working variable
     private final int[] mCoordinates = new int[2];
+
+    private final EpdController epdController;
+    protected EpdRegionParams.Wave mWaveformForTyping;
+    private boolean mFastWaveformNeeded;
 
     private PopupWindow mPopupKeyboard;
     private View mMiniKeyboardContainer;
@@ -293,6 +299,9 @@ public class KeyboardView extends View implements View.OnClickListener {
         int previewLayout = 0;
         int keyTextSize = 0;
 
+        mFastWaveformNeeded = true;
+        mWaveformForTyping = EpdRegionParams.Wave.DU;
+
         int n = a.getIndexCount();
         
         for (int i = 0; i < n; i++) {
@@ -377,6 +386,7 @@ public class KeyboardView extends View implements View.OnClickListener {
 
         resetMultiTap();
         initGestureDetector();
+        epdController = new EpdController(context);
     }
 
 
@@ -865,6 +875,17 @@ public class KeyboardView extends View implements View.OnClickListener {
             if (mCurrentKeyIndex != NOT_A_KEY && keys.length > mCurrentKeyIndex) {
                 Key newKey = keys[mCurrentKeyIndex];
                 newKey.onPressed();
+                if (newKey.codes[0] == -7 || newKey.codes[0] == 10) {
+                    if (!this.mFastWaveformNeeded) {
+                        this.epdController.setRegion("KeyboardView", EpdController.HwRegion.KBD, this, EpdRegionParams.Wave.GU);
+                        this.mFastWaveformNeeded = true;
+                    }
+                }
+                else if (this.mFastWaveformNeeded) {
+                    this.epdController.setRegion("KeyboardView", EpdController.HwRegion.KBD, this, this.mWaveformForTyping);
+                    this.mFastWaveformNeeded = false;
+                    //this.mKeyDownLock = true;
+                }
                 invalidateKey(mCurrentKeyIndex);
                 final int keyCode = newKey.codes[0];
                 sendAccessibilityEventForUnicodeCharacter(AccessibilityEvent.TYPE_VIEW_HOVER_ENTER,
@@ -1412,6 +1433,7 @@ public class KeyboardView extends View implements View.OnClickListener {
             mPopupKeyboard.dismiss();
             mMiniKeyboardOnScreen = false;
             invalidateAllKeys();
+            this.epdController.setRegion("KeyboardView", EpdController.HwRegion.KBD, this, EpdRegionParams.Wave.GU);
         }
     }
 

@@ -26,6 +26,8 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.graphics.drawable.Drawable;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -116,6 +118,9 @@ public class Dialog implements DialogInterface, Window.Callback,
 
     private ActionMode mActionMode;
 
+    private final EpdController epdController;
+    private EpdRegionParams.Wave mWave;
+
     private final Runnable mDismissAction = new Runnable() {
         public void run() {
             dismissDialog();
@@ -169,6 +174,7 @@ public class Dialog implements DialogInterface, Window.Callback,
         w.setWindowManager(mWindowManager, null, null);
         w.setGravity(Gravity.CENTER);
         mListenersHandler = new ListenersHandler(this);
+        epdController = new EpdController(context);
     }
 
     /**
@@ -281,7 +287,14 @@ public class Dialog implements DialogInterface, Window.Callback,
                     WindowManager.LayoutParams.SOFT_INPUT_IS_FORWARD_NAVIGATION;
             l = nl;
         }
-
+        EpdRegionParams epdRegionParams;
+        if (this.mWave != null) {
+            epdRegionParams = new EpdRegionParams(0, 0, 600, 800, this.mWave);
+        }
+        else {
+            epdRegionParams = new EpdRegionParams(0, 0, 600, 800, EpdRegionParams.Wave.GU);
+        }
+        this.epdController.setRegion("Dialog", EpdController.HwRegion.DIALOG, epdRegionParams, EpdController.Mode.ONESHOT_ALL);
         try {
             mWindowManager.addView(mDecor, l);
             mShowing = true;
@@ -297,6 +310,8 @@ public class Dialog implements DialogInterface, Window.Callback,
     public void hide() {
         if (mDecor != null) {
             mDecor.setVisibility(View.GONE);
+            epdController.resetRegion("Dialog", EpdController.HwRegion.DIALOG);
+            epdController.disableEpd("Dialog", 100);
         }
     }
 
@@ -326,6 +341,8 @@ public class Dialog implements DialogInterface, Window.Callback,
         }
 
         try {
+            epdController.resetRegion("Dialog", EpdController.HwRegion.DIALOG);
+            epdController.disableEpd("Dialog", 100);
             mWindowManager.removeViewImmediate(mDecor);
         } finally {
             if (mActionMode != null) {
@@ -1182,6 +1199,10 @@ public class Dialog implements DialogInterface, Window.Callback,
      */
     public void setDismissMessage(final Message msg) {
         mDismissMessage = msg;
+    }
+
+    public void setEinkWaveform(final EpdRegionParams.Wave Wave) {
+        mWave = Wave;
     }
 
     /** @hide */

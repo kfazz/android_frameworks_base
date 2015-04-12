@@ -40,6 +40,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.hardware.EpdController;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
@@ -5300,7 +5301,15 @@ public class Activity extends ContextThemeWrapper
     
     final void performResume() {
         performRestart();
-        
+
+        Log.v("Activity", "performResume()");
+        final EpdController epdController = new EpdController(this);
+        final EpdController.Region[] values = EpdController.Region.values();
+        for (int length = values.length, i = 0; i < length; ++i) {
+            epdController.resetRegion("ActivityResume", values[i]);
+        }
+        epdController.disableEpd("ActivityResume", 350);
+
         mFragments.execPendingActions();
         
         mLastNonConfigurationInstances = null;

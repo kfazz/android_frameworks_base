@@ -25,6 +25,8 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.AttributeSet;
@@ -74,13 +76,20 @@ public class ScrollView extends FrameLayout {
     static final float MAX_SCROLL_FACTOR = 0.5f;
 
     private static final String TAG = "ScrollView";
-
+    private final EpdController epdController;
     private long mLastScroll;
 
     private final Rect mTempRect = new Rect();
     private OverScroller mScroller;
     private EdgeEffect mEdgeGlowTop;
     private EdgeEffect mEdgeGlowBottom;
+
+    private boolean mSuppressEinkClear;
+    private boolean mClearEinkOnNextDraw;
+    private int mEinkClearTopY;
+    int mEinkLayoutClearCount;
+    private int mEinkLayoutCounter;
+    private int mPageOverlap;
 
     /**
      * Position of the last motion event.
@@ -171,7 +180,61 @@ public class ScrollView extends FrameLayout {
 
         setFillViewport(a.getBoolean(R.styleable.ScrollView_fillViewport, false));
 
+      //  setPageOverlap(obtainStyledAttributes.getInteger(1, 10));
+      //  setEinkLayoutClearCount(obtainStyledAttributes.getInt(2, 0));
+      //  setEinkClearTopY(obtainStyledAttributes.getInt(3, 40));
+	//FIXME: These numbers are 'fake'
+          setPageOverlap(10);
+          setEinkLayoutClearCount(2);
+          setEinkClearTopY(40);
+
         a.recycle();
+        epdController = new EpdController(context);
+    }
+
+    public int getCurrentPageNum() {
+        final int n = this.getHeight() - this.mPaddingTop - this.mPaddingBottom;
+        if (this.getChildCount() == 0 || n <= 0) {
+            return 0;
+        }
+        return this.getScrollY() / (n - this.mPageOverlap);
+    }
+
+    public int getTotalPageNum() {
+        final int n = this.getHeight() - this.mPaddingTop - this.mPaddingBottom;
+        if (this.getChildCount() == 0 || n <= 0) {
+            return 0;
+        }
+        final int bottom = this.getChildAt(0).getBottom();
+        int n2;
+        if (bottom - n <= 0) {
+            n2 = 1;
+        }
+        else {
+            n2 = 1 + (int)Math.ceil((bottom - n) / (n - this.mPageOverlap));
+        }
+        return n2;
+    }
+
+    void incrementEinkLayoutCounter() {
+        if (mEinkLayoutClearCount > 0) {
+            ++mEinkLayoutCounter;
+            if (mEinkLayoutCounter >= mEinkLayoutClearCount) {
+                clearEinkOnNextDraw();
+            }
+        }
+    }
+
+    public void setEinkClearTopY(final int EinkClearTopY) {
+        this.mEinkClearTopY = EinkClearTopY;
+    }
+
+    public void setPageOverlap(final int PageOverlap) {
+        this.mPageOverlap = PageOverlap;
+    }
+
+    public void setEinkLayoutClearCount(final int EinkLayoutClearCount) {
+        this.mEinkLayoutClearCount = EinkLayoutClearCount;
     }
 
     @Override
@@ -353,9 +416,30 @@ public class ScrollView extends FrameLayout {
     }
 
     @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        // Let the focused view and/or our descendants get the key first
-        return super.dispatchKeyEvent(event) || executeKeyEvent(event);
+    protected void dispatchDraw(final Canvas canvas) {
+        super.dispatchDraw(canvas);
+        if (!this.mSuppressEinkClear && this.mClearEinkOnNextDraw) {
+            this.epdController.setRegion("ScrollView", EpdController.HwRegion.APP_2, new EpdRegionParams(0, this.mEinkClearTopY, 600, 800, EpdRegionParams.Wave.GC), EpdController.Mode.ONESHOT_ALL);
+            this.mClearEinkOnNextDraw = false;
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent keyEvent) {
+        final boolean dispatchKeyEvent = super.dispatchKeyEvent(keyEvent);
+        if (this.mEinkLayoutClearCount > 0) {
+            if (keyEvent.getAction() == 1) {
+                if (this.mSuppressEinkClear) {
+                    this.mSuppressEinkClear = false;
+                    this.mClearEinkOnNextDraw = true;
+                    this.invalidate();
+                }
+            }
+            else if (keyEvent.getAction() == 0 && keyEvent.getRepeatCount() > 0) {
+                this.mSuppressEinkClear = true;
+            }
+        }
+        return dispatchKeyEvent || this.executeKeyEvent(keyEvent);
     }
 
     /**
@@ -1226,6 +1310,11 @@ public class ScrollView extends FrameLayout {
         child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
     }
 
+    public void clearEinkOnNextDraw() {
+        mClearEinkOnNextDraw = true;
+        mEinkLayoutCounter = 0;
+    }
+
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
@@ -1579,6 +1668,14 @@ public class ScrollView extends FrameLayout {
             y = clamp(y, getHeight() - mPaddingBottom - mPaddingTop, child.getHeight());
             if (x != mScrollX || y != mScrollY) {
                 super.scrollTo(x, y);
+                if (mEinkLayoutClearCount > 0) {
+                    if (getTotalPageNum() == getCurrentPageNum()+1) {
+                        clearEinkOnNextDraw();
+                    }
+                    else {
+                        incrementEinkLayoutCounter();
+                    }
+                }
             }
         }
     }
