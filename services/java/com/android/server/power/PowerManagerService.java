@@ -39,6 +39,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -207,6 +209,8 @@ public final class PowerManagerService extends IPowerManager.Stub
     private int mButtonBrightnessSettingDefault;
     private int mKeyboardBrightness;
     private int mKeyboardBrightnessSettingDefault;
+
+    private EpdController epdController;
 
     private final Object mLock = new Object();
 

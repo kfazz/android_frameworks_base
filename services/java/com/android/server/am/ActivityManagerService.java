@@ -129,6 +129,8 @@ import android.content.pm.ServiceInfo;
 import android.content.res.CompatibilityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.net.Proxy;
 import android.net.ProxyProperties;
 import android.net.Uri;
@@ -9700,6 +9702,12 @@ public final class ActivityManagerService extends ActivityManagerNative
             crashTime = mProcessCrashTimes.get(app.info.processName, app.uid);
         } else {
             crashTime = null;
+        }
+        EpdController.Region[] arrregion = EpdController.Region.values();
+        EpdController epdController = new EpdController(this.mContext);
+        int n = arrregion.length;
+        for (int i = 0; i < n; ++i) {
+            epdController.resetRegion("ActivityManager", arrregion[i]);
         }
         if (crashTime != null && now < crashTime+ProcessList.MIN_CRASH_INTERVAL) {
             // This process loses!
