@@ -37,6 +37,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.EpdController;
+import android.hardware.EpdRegionParams;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.os.RemoteException;
@@ -50,6 +52,7 @@ import android.os.storage.IMountService;
 import android.os.storage.IMountShutdownObserver;
 import android.provider.Settings;
 import android.telephony.MSimTelephonyManager;
+import android.util.DisplayMetrics;
 
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.msim.ITelephonyMSim;
@@ -320,21 +323,6 @@ public final class ShutdownThread extends Thread {
             sIsStarted = true;
         }
 
-        // throw up an indeterminate system dialog to indicate radio is
-        // shutting down.
-        ProgressDialog pd = new ProgressDialog(context);
-        if (mReboot) {
-            pd.setTitle(context.getText(com.android.internal.R.string.reboot_system));
-            pd.setMessage(context.getText(com.android.internal.R.string.reboot_progress));
-        } else {
-            pd.setTitle(context.getText(com.android.internal.R.string.power_off));
-            pd.setMessage(context.getText(com.android.internal.R.string.shutdown_progress));
-        }
-        pd.setIndeterminate(true);
-        pd.setCancelable(false);
-        pd.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
-
-        pd.show();
 
         sInstance.mContext = context;
         sInstance.mPowerManager = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
@@ -351,23 +339,11 @@ public final class ShutdownThread extends Thread {
             sInstance.mCpuWakeLock = null;
         }
 
-        // also make sure the screen stays on for better user experience
-        sInstance.mScreenWakeLock = null;
-        if (sInstance.mPowerManager.isScreenOn()) {
-            try {
-                sInstance.mScreenWakeLock = sInstance.mPowerManager.newWakeLock(
-                        PowerManager.FULL_WAKE_LOCK, TAG + "-screen");
-                sInstance.mScreenWakeLock.setReferenceCounted(false);
-                sInstance.mScreenWakeLock.acquire();
-            } catch (SecurityException e) {
-                Log.w(TAG, "No permission to acquire wake lock", e);
-                sInstance.mScreenWakeLock = null;
-            }
-        }
 
         // start the thread that initiates shutdown
         sInstance.mHandler = new Handler() {
         };
+        ShutdownThread.clearScreen(context);
         sInstance.start();
     }
 
@@ -375,6 +351,24 @@ public final class ShutdownThread extends Thread {
         synchronized (mActionDoneSync) {
             mActionDone = mMountServiceDone.get() && mModemDone.get();
             mActionDoneSync.notifyAll();
+        }
+    }
+
+    private static void clearScreen(Context context) {
+        try {
+            //DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
+            EpdRegionParams epdRegionParams = new EpdRegionParams(0, 0, 600,800, EpdRegionParams.Wave.DU, 17);
+            EpdRegionParams epdRegionParams2 = new EpdRegionParams(0, 0, 600,800, EpdRegionParams.Wave.DU, 16);
+            EpdController epdController = new EpdController(context);
+            epdController.disableEpd("ShutdownThread", 5000);
+            epdController.fillRegion("ShutdownThread", epdRegionParams);
+            Thread.sleep(250);
+            epdController.fillRegion("ShutdownThread", epdRegionParams2);
+            return;
+        }
+        catch (Exception ex) {
+            Log.e("ShutdownThread", "Exception clearing display", ex);
+            return;
         }
     }
 
@@ -456,7 +450,6 @@ public final class ShutdownThread extends Thread {
                 }
             }
         }
-
         rebootOrShutdown(mReboot, mRebootReason);
     }
 
